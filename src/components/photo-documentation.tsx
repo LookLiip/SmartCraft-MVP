@@ -84,7 +84,7 @@ export function PhotoDocumentation() {
     return (
       <Card className="w-full">
         <CardContent className="p-6 text-center text-slate-500">
-          Bitte starten Sie zuerst einen Bericht unter "Info".
+          Bitte starten Sie zuerst einen Bericht unter &quot;Info&quot;.
         </CardContent>
       </Card>
     );

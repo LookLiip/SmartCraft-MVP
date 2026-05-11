@@ -42,7 +42,7 @@ export function ConsentDialog({ open, onAccept }: ConsentDialogProps) {
             </ul>
           </div>
           <p className="text-xs text-slate-500">
-            Sie können diese Einwilligung jederzeit in den Einstellungen widerrufen. Durch Klicken auf "Akzeptieren" erklären Sie sich mit der beschriebenen Verarbeitung einverstanden.
+            Sie können diese Einwilligung jederzeit in den Einstellungen widerrufen. Durch Klicken auf &quot;Akzeptieren&quot; erklären Sie sich mit der beschriebenen Verarbeitung einverstanden.
           </p>
         </div>
 

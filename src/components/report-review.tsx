@@ -82,7 +82,7 @@ export function ReportReview() {
                 <div className="text-sm">
                   <p className="font-semibold text-blue-900 italic">Original-Transkription (Mitarbeiter):</p>
                   <p className="text-blue-800 mt-1 opacity-80">
-                    "Bugün Müller'in evinde alt kattaki elektrik işlerini bitirdik. Mutfak kablolarını çektik, odalardaki kutuları taktık. Ana tabloyu hazırladık. Her şey yolunda."
+                    &quot;Bugün Müller&apos;in evinde alt kattaki elektrik işlerini bitirdik. Mutfak kablolarını çektik, odalardaki kutuları taktık. Ana tabloyu hazırladık. Her şey yolunda.&quot;
                   </p>
                 </div>
               </div>
