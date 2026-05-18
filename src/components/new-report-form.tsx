@@ -9,7 +9,7 @@ import { db } from '@/lib/dexie/db';
 import { useReportStore } from '@/stores/report-store';
 import { CheckCircle2, Loader2 } from 'lucide-react';
 
-export function NewReportForm() {
+export function NewReportForm({ onReportStarted }: { onReportStarted?: () => void }) {
   const setCurrentReportId = useReportStore((state) => state.setCurrentReportId);
   const currentReportId = useReportStore((state) => state.currentReportId);
   
@@ -52,6 +52,7 @@ export function NewReportForm() {
       
       setCurrentReportId(reportId);
       setSuccess(true);
+      if (onReportStarted) onReportStarted();
     } catch (error) {
       console.error('Failed to create report:', error);
     } finally {

@@ -19,11 +19,12 @@ import { db } from '@/lib/dexie/db';
 import { useReportStore } from '@/stores/report-store';
 import { useLiveQuery } from 'dexie-react-hooks';
 
-export function SignaturePad() {
+export function SignaturePad({ onComplete }: { onComplete?: () => void }) {
   const currentReportId = useReportStore((state) => state.currentReportId);
   const sigCanvas = useRef<SignatureCanvas>(null);
   const [signerName, setSignerName] = useState('');
   const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const signature = useLiveQuery(
     () => db.signatures.where('report_id').equals(currentReportId || '').first(),
@@ -37,21 +38,34 @@ export function SignaturePad() {
   const save = async () => {
     if (!currentReportId || sigCanvas.current?.isEmpty() || !signerName) return;
     
-    const dataUrl = sigCanvas.current?.getTrimmedCanvas().toDataURL('image/png');
-    if (dataUrl) {
-      const now = new Date().toISOString();
-      await db.signatures.add({
-        id: crypto.randomUUID(),
-        report_id: currentReportId,
-        signature_data: dataUrl,
-        signer_role: 'client',
-        signer_name: signerName,
-        signed_at: now,
-        updated_at: now,
-        version: 1,
-        is_synced: 0
-      });
-      setOpen(false);
+    setSaving(true);
+    try {
+      const dataUrl = sigCanvas.current?.getTrimmedCanvas().toDataURL('image/png');
+      if (dataUrl) {
+        const now = new Date().toISOString();
+        await db.signatures.add({
+          id: crypto.randomUUID(),
+          report_id: currentReportId,
+          signature_data: dataUrl,
+          signer_role: 'client',
+          signer_name: signerName,
+          signed_at: now,
+          updated_at: now,
+          version: 1,
+          is_synced: 0
+        });
+        
+        // Also update report status to pending_review
+        await db.reports.update(currentReportId, { status: 'pending_review' });
+        
+        setOpen(false);
+        if (onComplete) {
+          // Small delay for UX
+          setTimeout(onComplete, 500);
+        }
+      }
+    } finally {
+      setSaving(false);
     }
   };
 

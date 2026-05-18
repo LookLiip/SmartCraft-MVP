@@ -37,7 +37,7 @@ export default function WorkerPage() {
           </TabsList>
           
           <TabsContent value="info" className="mt-4">
-            <NewReportForm />
+            <NewReportForm onReportStarted={() => setActiveTab('voice')} />
           </TabsContent>
 
           <TabsContent value="voice" className="mt-4">
@@ -53,7 +53,7 @@ export default function WorkerPage() {
           </TabsContent>
           
           <TabsContent value="sign" className="mt-4">
-            <SignaturePad />
+            <SignaturePad onComplete={() => setActiveTab('list')} />
           </TabsContent>
 
           <TabsContent value="list" className="mt-4">

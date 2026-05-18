@@ -49,7 +49,7 @@ export class SyncManager {
     const supabase = createClient();
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-      console.log('Sync skipped: No active session');
+      console.log('Sync skipped: No active session. Data will remain local until login.');
       return;
     }
 
