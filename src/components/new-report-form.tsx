@@ -34,8 +34,8 @@ export function NewReportForm() {
       const now = new Date().toISOString();
       await db.reports.add({
         id: reportId,
-        organization_id: 'org_mock_123', // Placeholder
-        created_by: 'user_mock_456', // Placeholder
+        organization_id: 'ce9c1474-9c0f-48af-9e9b-62f53d517c18', // Updated to valid Dev Org ID
+        created_by: '00000000-0000-0000-0000-000000000000', // Placeholder valid UUID
         site_name: formData.siteName,
         site_address: formData.address,
         client_name: formData.clientName,

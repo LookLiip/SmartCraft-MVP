@@ -24,6 +24,13 @@ supabase secrets set OPENAI_API_KEY=your-new-openai-key
 
 Note: The Edge Functions now auto-detect `sk-proj-` keys and use OpenAI API directly, or fallback to Azure OpenAI for Azure-format keys.
 
+## Alternative: Manual Deployment via Supabase Dashboard
+
+If CLI access is unavailable, deploy manually:
+1. Go to https://supabase.com/dashboard/project/dumrylcrjaienqvtkfss/functions
+2. Create each function and paste the code from the files below
+3. Set `OPENAI_API_KEY` as a secret in Project Settings → Edge Functions → Secrets
+
 ## Deployment Commands
 
 ```bash

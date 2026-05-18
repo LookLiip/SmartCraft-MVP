@@ -9,6 +9,7 @@ const ALLOWED_ORIGINS = [
   'https://smartcraft.app',
   'https://www.smartcraft.app',
   'https://app.smartcraft.app',
+  'https://smartcraftmvp.netlify.app',
   /\.vercel\.app$/,
   'http://localhost:3000',
   'http://127.0.0.1:3000',
@@ -99,18 +100,36 @@ serve(async (req: Request) => {
   }
 
   try {
-    const supabaseUrl = Deno.env.get("NEXT_PUBLIC_SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const azureOpenAIEndpoint = Deno.env.get("AZURE_OPENAI_ENDPOINT")!;
-    const azureOpenAIApiKey = Deno.env.get("AZURE_OPENAI_API_KEY")!;
+    const supabaseUrl = Deno.env.get("NEXT_PUBLIC_SUPABASE_URL") || Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const azureOpenAIEndpoint = Deno.env.get("AZURE_OPENAI_ENDPOINT") || "https://api.openai.com/v1";
+    const azureOpenAIApiKey = Deno.env.get("AZURE_OPENAI_API_KEY") || Deno.env.get("OPENAI_API_KEY");
     const azureOpenAIDeploymentName = Deno.env.get("AZURE_OPENAI_DEPLOYMENT_NAME") || "gpt-4o";
+
+    if (!supabaseUrl || !supabaseServiceKey || !azureOpenAIApiKey) {
+      console.error("Missing required environment variables");
+      return new Response(JSON.stringify({ error: "Configuration error: Missing API keys" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const useOpenAI = isOpenAIKey(azureOpenAIApiKey);
     console.log(`Using ${useOpenAI ? 'OpenAI' : 'Azure OpenAI'} API for auto-refinement`);
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { report_id, business_type = "construction" }: AutoRefineRequest = await req.json();
+    let body;
+    try {
+      body = await req.json();
+    } catch (e) {
+      return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { report_id, business_type = "construction" } = body;
 
     if (!report_id) {
       return new Response(JSON.stringify({ error: "report_id is required" }), {

@@ -53,17 +53,37 @@ export function VoiceInput({ onTranscriptionComplete }: VoiceInputProps) {
     } catch { setPermissionGranted(null); }
   };
 
+  const recordingStateRef = useRef<RecordingState>('idle');
+
+  const setRecordingStateWithRef = (state: RecordingState) => {
+    recordingStateRef.current = state;
+    setRecordingState(state);
+  };
+
   // Set up audio analysis for visualization
-  const setupAudioAnalysis = (stream: MediaStream) => {
+  const setupAudioAnalysis = async (stream: MediaStream) => {
     try {
-      audioContextRef.current = new AudioContext();
-      analyserRef.current = audioContextRef.current.createAnalyser();
+      if (audioContextRef.current) {
+        await audioContextRef.current.close().catch(() => {});
+      }
+      
+      // Cross-browser AudioContext
+      const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextClass) return;
+
+      audioContextRef.current = new AudioContextClass();
+      
+      if (audioContextRef.current?.state === 'suspended') {
+        await audioContextRef.current.resume();
+      }
+      
+      analyserRef.current = audioContextRef.current!.createAnalyser();
       analyserRef.current.fftSize = 256;
-      const source = audioContextRef.current.createMediaStreamSource(stream);
+      const source = audioContextRef.current!.createMediaStreamSource(stream);
       source.connect(analyserRef.current);
       
       const updateLevel = () => {
-        if (analyserRef.current && recordingState === 'recording') {
+        if (analyserRef.current && recordingStateRef.current === 'recording') {
           const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
           analyserRef.current.getByteFrequencyData(dataArray);
           const average = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
@@ -77,6 +97,23 @@ export function VoiceInput({ onTranscriptionComplete }: VoiceInputProps) {
     }
   };
 
+  const getSupportedMimeType = () => {
+    const types = [
+      'audio/webm;codecs=opus',
+      'audio/webm',
+      'audio/mp4',
+      'audio/aac',
+    ];
+    for (const type of types) {
+      if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(type)) {
+        return type;
+      }
+    }
+    return '';
+  };
+
+  const selectedMimeTypeRef = useRef<string>('');
+
   const startRecording = async () => {
     if (!voiceConsentGiven) {
       setShowConsent(true);
@@ -87,59 +124,86 @@ export function VoiceInput({ onTranscriptionComplete }: VoiceInputProps) {
     setAudioLevel(0);
     
     try {
-      // Enhanced audio constraints for construction site noise
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        audio: { 
+      console.log('Requesting microphone access...');
+      // Safari/iOS is very sensitive to constraints. 
+      // Using simple true or basic constraints is more robust.
+      const constraints = { 
+        audio: {
           echoCancellation: true,
           noiseSuppression: true,
-          autoGainControl: true,  // Help with varying speaker volume
-          sampleRate: 16000,
-          // Chrome-specific for better noise handling
-          channelCount: 1,
-          latency: 0.01,  // Low latency for real-time processing
-        } as any 
-      });
+          autoGainControl: true,
+        }
+      };
+
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      console.log('Microphone access granted');
       
       // Set up audio analysis for visual feedback
-      setupAudioAnalysis(stream);
+      // Wrapped in try-catch to ensure recording starts even if visualizer fails
+      try {
+        await setupAudioAnalysis(stream);
+      } catch (analyserErr) {
+        console.warn('Audio analyser setup failed:', analyserErr);
+      }
       
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4'
-      });
+      const mimeType = getSupportedMimeType();
+      selectedMimeTypeRef.current = mimeType;
       
-      mediaRecorderRef.current = mediaRecorder;
-      audioChunksRef.current = [];
+      console.log(`Starting MediaRecorder with MIME type: ${mimeType || 'default'}`);
       
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) audioChunksRef.current.push(event.data);
-      };
+      // For Safari, sometimes providing an empty options object or no mimeType is safer 
+      // if we aren't 100% sure. But we'll try the detected one first.
+      const options = mimeType ? { mimeType } : {};
       
-      mediaRecorder.onstop = async () => {
-        stream.getTracks().forEach(track => track.stop());
-        if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
-        setAudioLevel(0);
-        await processAudio();
-      };
-      
-      mediaRecorder.onerror = (event: Event) => {
-        console.error('MediaRecorder error:', event);
-        setRecordingState('error');
-        setErrorMessage('Aufnahmefehler aufgetreten.');
-        stream.getTracks().forEach(track => track.stop());
-        if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
-      };
-      
-      // Use timeslice for better chunk handling on unstable connections
-      mediaRecorder.start(100);
-      setRecordingState('recording');
-      setDuration(0);
-      
-      timerRef.current = setInterval(() => setDuration(prev => prev + 1), 1000);
-    } catch (err) {
-      console.error('Error accessing microphone:', err);
-      setPermissionGranted(false);
-      setRecordingState('error');
-      setErrorMessage('Mikrofonzugriff verweigert. Bitte Berechtigung erteilen.');
+      try {
+        const mediaRecorder = new MediaRecorder(stream, options);
+        mediaRecorderRef.current = mediaRecorder;
+        audioChunksRef.current = [];
+        
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            console.log(`Data available: ${event.data.size} bytes, type: ${event.data.type}`);
+            audioChunksRef.current.push(event.data);
+          }
+        };
+        
+        mediaRecorder.onstop = async () => {
+          console.log('MediaRecorder stopped');
+          stream.getTracks().forEach(track => track.stop());
+          if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+          setAudioLevel(0);
+          await processAudio();
+        };
+        
+        mediaRecorder.onerror = (event: any) => {
+          console.error('MediaRecorder error:', event);
+          setRecordingStateWithRef('error');
+          setErrorMessage(`Recorder-Fehler: ${event.error?.name || 'Unbekannt'}`);
+          stream.getTracks().forEach(track => track.stop());
+          if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+        };
+        
+        // Safari fix: 1000ms timeslice is critical for data emission
+        mediaRecorder.start(1000);
+        setRecordingStateWithRef('recording');
+        setDuration(0);
+        
+        timerRef.current = setInterval(() => setDuration(prev => prev + 1), 1000);
+      } catch (recorderErr: any) {
+        console.error('Failed to create MediaRecorder:', recorderErr);
+        throw new Error(`Recorder konnte nicht gestartet werden: ${recorderErr.message}`);
+      }
+    } catch (err: any) {
+      console.error('Error starting recording:', err);
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        setPermissionGranted(false);
+        setErrorMessage('Mikrofonzugriff verweigert. Bitte in den Einstellungen erlauben.');
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        setErrorMessage('Kein Mikrofon gefunden.');
+      } else {
+        setErrorMessage(`Mikrofon-Fehler: ${err.message || 'Zugriff nicht möglich'}`);
+      }
+      setRecordingStateWithRef('error');
     }
   };
 
@@ -148,37 +212,47 @@ export function VoiceInput({ onTranscriptionComplete }: VoiceInputProps) {
       mediaRecorderRef.current.stop();
     }
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
-    setRecordingState('processing');
+    setRecordingStateWithRef('processing');
   };
 
   const processAudio = async () => {
     if (audioChunksRef.current.length === 0) {
-      setRecordingState('error');
-      setErrorMessage('Keine Audiodaten aufgenommen.');
+      setRecordingStateWithRef('error');
+      setErrorMessage('Keine Audiodaten aufgenommen. (Safari/iOS Issue)');
       return;
     }
 
-    const audioBlob = new Blob(audioChunksRef.current, { 
-      type: MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4' 
-    });
+    const mimeType = selectedMimeTypeRef.current || audioChunksRef.current[0].type;
+    const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+    
+    // Determine extension based on mime type
+    let extension = 'webm';
+    if (mimeType.includes('mp4')) extension = 'mp4';
+    else if (mimeType.includes('aac')) extension = 'aac';
+    else if (mimeType.includes('ogg')) extension = 'ogg';
 
     // Minimum 1 second recording
-    if (duration < 1) {
-      setRecordingState('error');
+    if (duration < 1 && audioBlob.size < 1000) {
+      setRecordingStateWithRef('error');
       setErrorMessage('Aufnahme zu kurz. Bitte mindestens 1 Sekunde sprechen.');
       return;
     }
 
-    setRecordingState('processing');
+    setRecordingStateWithRef('processing');
 
     try {
       const supabase = createClient();
-      const fileName = `audio_${Date.now()}.webm`;
+      const fileName = `audio_${Date.now()}.${extension}`;
       const path = `temp/audio/${fileName}`;
+      
+      console.log(`Uploading ${audioBlob.size} bytes as ${mimeType} to ${path}`);
       
       const { error: uploadError } = await supabase.storage
         .from('audio')
-        .upload(path, audioBlob, { contentType: audioBlob.type });
+        .upload(path, audioBlob, { 
+          contentType: mimeType,
+          upsert: true 
+        });
 
       if (uploadError) throw new Error('Hochladen fehlgeschlagen.');
 
@@ -230,16 +304,16 @@ export function VoiceInput({ onTranscriptionComplete }: VoiceInputProps) {
         supabase.storage.from('audio').remove([path]).catch(() => {});
       });
       
-      setRecordingState('success');
+      setRecordingStateWithRef('success');
       if (onTranscriptionComplete) {
         onTranscriptionComplete(result.original_text || '', result.translated_text || '');
       }
-      setTimeout(() => setRecordingState('idle'), 2000);
+      setTimeout(() => setRecordingStateWithRef('idle'), 2000);
     } catch (err) {
       console.error('Transcription error:', err);
-      setRecordingState('error');
+      setRecordingStateWithRef('error');
       setErrorMessage(err instanceof Error ? err.message : 'Transkription fehlgeschlagen.');
-      setTimeout(() => setRecordingState('idle'), 3000);
+      setTimeout(() => setRecordingStateWithRef('idle'), 3000);
     }
   };
 

@@ -10,6 +10,7 @@ const ALLOWED_ORIGINS = [
   'https://smartcraft.app',
   'https://www.smartcraft.app',
   'https://app.smartcraft.app',
+  'https://smartcraftmvp.netlify.app',
   /\.vercel\.app$/,
   'http://localhost:3000',
   'http://127.0.0.1:3000',
@@ -112,21 +113,39 @@ serve(async (req: Request) => {
   }
 
   try {
-    const supabaseUrl = Deno.env.get("NEXT_PUBLIC_SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const azureWhisperEndpoint = Deno.env.get("AZURE_WHISPER_ENDPOINT")!;
-    const azureWhisperApiKey = Deno.env.get("AZURE_WHISPER_API_KEY")!;
-    const azureOpenAIEndpoint = Deno.env.get("AZURE_OPENAI_ENDPOINT")!;
-    const azureOpenAIApiKey = Deno.env.get("AZURE_OPENAI_API_KEY")!;
+    const supabaseUrl = Deno.env.get("NEXT_PUBLIC_SUPABASE_URL") || Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const azureWhisperEndpoint = Deno.env.get("AZURE_WHISPER_ENDPOINT") || "https://api.openai.com/v1";
+    const azureWhisperApiKey = Deno.env.get("AZURE_WHISPER_API_KEY") || Deno.env.get("OPENAI_API_KEY");
+    const azureOpenAIEndpoint = Deno.env.get("AZURE_OPENAI_ENDPOINT") || "https://api.openai.com/v1";
+    const azureOpenAIApiKey = Deno.env.get("AZURE_OPENAI_API_KEY") || Deno.env.get("OPENAI_API_KEY");
     const azureOpenAIDeploymentName = Deno.env.get("AZURE_OPENAI_DEPLOYMENT_NAME") || "gpt-4o";
     
+    if (!supabaseUrl || !supabaseServiceKey || !azureWhisperApiKey || !azureOpenAIApiKey) {
+      console.error("Missing required environment variables");
+      return new Response(JSON.stringify({ error: "Configuration error: Missing API keys" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Check if we should use OpenAI API or Azure OpenAI
     const useOpenAI = isOpenAIKey(azureOpenAIApiKey);
     console.log(`Using ${useOpenAI ? 'OpenAI' : 'Azure OpenAI'} API for translation`);
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { audio_path, target_language = "de", report_id, context, noise_level }: TranscriptionRequest = await req.json();
+    let body;
+    try {
+      body = await req.json();
+    } catch (e) {
+      return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { audio_path, target_language = "de", report_id, context, noise_level } = body;
 
     if (!audio_path) {
       return new Response(JSON.stringify({ error: "audio_path is required" }), {
@@ -144,22 +163,33 @@ serve(async (req: Request) => {
 
     if (downloadError || !audioData) {
       console.error("Download error:", downloadError);
-      return new Response(JSON.stringify({ error: "Failed to download audio file" }), {
+      return new Response(JSON.stringify({ error: "Failed to download audio file from storage" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     // Step 2: Transcribe with Whisper
-    // For OpenAI API, we need to use OpenAI's transcription endpoint
-    // For Azure, we use Azure's Whisper endpoint
     let rawText = "";
     
+    // Determine file extension from path or blob type
+    let fileExtension = "webm";
+    if (audio_path.endsWith(".mp4") || audio_path.endsWith(".m4a")) {
+      fileExtension = audio_path.split('.').pop()!;
+    } else if (audioData.type) {
+      if (audioData.type.includes("mp4")) fileExtension = "mp4";
+      else if (audioData.type.includes("mpeg")) fileExtension = "mp3";
+      else if (audioData.type.includes("wav")) fileExtension = "wav";
+    }
+    
+    const fileName = `audio.${fileExtension}`;
+    console.log(`Using filename for transcription: ${fileName} (type: ${audioData.type})`);
+
     if (useOpenAI) {
       // Use OpenAI's audio transcription API
       const formData = new FormData();
-      formData.append("file", audioData, "audio.webm");
-      formData.append("model", "whisper");
+      formData.append("file", audioData, fileName);
+      formData.append("model", "whisper-1"); // Standard OpenAI Whisper model name
       
       const whisperResponse = await fetch("https://api.openai.com/v1/audio/transcriptions", {
         method: "POST",
