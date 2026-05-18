@@ -72,6 +72,46 @@ export class SyncManager {
     }
   }
 
+  public async queueDeletion(bucket: string, path: string) {
+    await db.pending_deletions.add({
+      id: crypto.randomUUID(),
+      bucket,
+      path,
+      created_at: new Date().toISOString(),
+      retry_count: 0
+    });
+    // Trigger sync to process it immediately if online
+    this.sync();
+  }
+
+  private async processPendingDeletions() {
+    const deletions = await db.pending_deletions.toArray();
+    const supabase = createClient();
+
+    for (const del of deletions) {
+      try {
+        const { error } = await supabase.storage.from(del.bucket).remove([del.path]);
+        // If error is "Object not found", we consider it a success because the goal was to remove it
+        if (!error || error.message?.includes('Object not found') || (error as any).status === 404) {
+          await db.pending_deletions.delete(del.id);
+          await this.logAudit('deletion_success', 'storage', del.id, `Deleted ${del.path} from ${del.bucket}`);
+        } else {
+           await db.pending_deletions.update(del.id, { retry_count: del.retry_count + 1 });
+           console.error(`Failed to delete storage object ${del.path}:`, error);
+        }
+      } catch (err) {
+        console.error(`Unexpected error processing deletion ${del.id}:`, err);
+      }
+    }
+  }
+
+  private async cleanup() {
+    // Purge audit logs older than 7 days
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    await db.audit_log.where('synced_at').below(sevenDaysAgo.toISOString()).delete();
+  }
+
   private async syncReports() {
     const pendingReports = await db.reports
       .where('is_synced').equals(0)
