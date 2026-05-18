@@ -6,7 +6,15 @@ import { Home, FileText, Camera, PenTool, Settings, Wifi, WifiOff, RefreshCw } f
 import { Button } from '@/components/ui/button';
 import { SyncManager } from '@/lib/sync-manager';
 
-export function WorkerShell({ children }: { children: React.ReactNode }) {
+export function WorkerShell({ 
+  children,
+  activeTab,
+  onTabChange
+}: { 
+  children: React.ReactNode,
+  activeTab?: string,
+  onTabChange?: (tab: string) => void
+}) {
   const [isOnline, setIsOnline] = useState(true);
   const [syncing, setSyncing] = useState(false);
 
@@ -81,11 +89,36 @@ export function WorkerShell({ children }: { children: React.ReactNode }) {
 
       {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t px-2 py-2 flex justify-around items-center shadow-lg z-20">
-        <NavLink href="/worker" icon={<Home className="w-6 h-6" />} label="Home" />
-        <NavLink href="/worker" icon={<FileText className="w-6 h-6" />} label="Berichte" />
-        <NavLink href="/worker" icon={<Camera className="w-6 h-6" />} label="Fotos" />
-        <NavLink href="/worker" icon={<PenTool className="w-6 h-6" />} label="Unterschrift" />
-        <NavLink href="/worker" icon={<Settings className="w-6 h-6" />} label="Einst." />
+        <NavLink 
+          icon={<Home className="w-6 h-6" />} 
+          label="Home" 
+          active={activeTab === 'info' || activeTab === 'voice'} 
+          onClick={() => onTabChange?.('info')} 
+        />
+        <NavLink 
+          icon={<FileText className="w-6 h-6" />} 
+          label="Berichte" 
+          active={activeTab === 'list'} 
+          onClick={() => onTabChange?.('list')} 
+        />
+        <NavLink 
+          icon={<Camera className="w-6 h-6" />} 
+          label="Fotos" 
+          active={activeTab === 'photos'} 
+          onClick={() => onTabChange?.('photos')} 
+        />
+        <NavLink 
+          icon={<PenTool className="w-6 h-6" />} 
+          label="Unterschrift" 
+          active={activeTab === 'sign'} 
+          onClick={() => onTabChange?.('sign')} 
+        />
+        <NavLink 
+          icon={<Settings className="w-6 h-6" />} 
+          label="Einst." 
+          active={activeTab === 'settings'} 
+          onClick={() => onTabChange?.('settings')} 
+        />
       </nav>
     </div>
   );
