@@ -184,7 +184,7 @@ export class SyncManager {
           console.error(`Sync failure for report ${local.id}:`, syncError);
           await this.logAudit('sync_failure', 'reports', local.id, syncError.message);
           // If it's a 400 error, mark it as permanent failure to stop the loop
-          if (syncError.code === '22P02' || syncError.code === '23503' || syncError.status === 400) {
+          if (syncError.code === '22P02' || syncError.code === '23503' || (syncError as any).status === 400) {
              await db.reports.update(local.id, { is_synced: -1 });
           }
         }
@@ -242,7 +242,7 @@ export class SyncManager {
           await this.logAudit('sync_success', 'report_entries', local.id);
         } else {
           console.error(`Sync failure for entry ${local.id}:`, syncError);
-          if (syncError.status === 400) {
+          if ((syncError as any).status === 400) {
             await db.entries.update(local.id, { is_synced: -1 });
           }
         }
@@ -300,7 +300,7 @@ export class SyncManager {
           await this.logAudit('sync_success', 'materials', local.id);
         } else {
           console.error(`Sync failure for material ${local.id}:`, syncError);
-          if (syncError.status === 400) {
+          if ((syncError as any).status === 400) {
             await db.materials.update(local.id, { is_synced: -1 });
           }
         }
@@ -361,7 +361,7 @@ export class SyncManager {
           await this.logAudit('sync_success', 'photos', photo.id);
         } else {
           console.error(`DB upsert error for photo ${photo.id}:`, dbError);
-          if (dbError.status === 400) {
+          if ((dbError as any).status === 400) {
             await db.photos.update(photo.id, { is_synced: -1 });
           }
         }
@@ -418,7 +418,7 @@ export class SyncManager {
           await this.logAudit('sync_success', 'signatures', sig.id);
         } else {
           console.error(`DB upsert error for signature ${sig.id}:`, dbError);
-          if (dbError.status === 400) {
+          if ((dbError as any).status === 400) {
             await db.signatures.update(sig.id, { is_synced: -1 });
           }
         }
