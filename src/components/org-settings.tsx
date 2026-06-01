@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/componen
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Upload, Save, Image as ImageIcon } from 'lucide-react';
+import { Loader2, Upload, Save, Image as ImageIcon, FileText } from 'lucide-react';
 
 interface Organization {
   id: string;
