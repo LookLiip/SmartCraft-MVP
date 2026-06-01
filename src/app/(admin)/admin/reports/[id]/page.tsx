@@ -4,11 +4,8 @@ import { Button } from '@/components/ui/button';
 import { ChevronLeft, Calendar, MapPin, User } from 'lucide-react';
 import Link from 'next/link';
 
-import { useParams } from 'next/navigation';
-
-export default function ReportReviewPage() {
-  const params = useParams();
-  const id = params.id as string;
+export default function ReportReviewPage({ params }: { params: { id: string } }) {
+  const id = params.id;
 
   return (
     <AdminShell>
