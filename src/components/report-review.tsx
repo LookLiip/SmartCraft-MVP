@@ -36,8 +36,11 @@ interface Report {
   id: string;
   original_transcription: string;
   refined_text: string;
+  translated_text?: string;
   site_name: string;
   work_date: string;
+  organization_id?: string;
+  status?: string;
 }
 
 export function ReportReview({ reportId }: { reportId: string }) {
