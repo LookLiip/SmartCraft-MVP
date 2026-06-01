@@ -50,9 +50,20 @@ CREATE POLICY "entries_org_access_v2" ON report_entries
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.users (id, email, full_name, role)
-  VALUES (NEW.id, NEW.email, COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.email), 'worker')
-  ON CONFLICT (id) DO NOTHING;
+  INSERT INTO public.users (id, email, full_name, role, organization_id, native_language)
+  VALUES (
+    NEW.id, 
+    NEW.email, 
+    COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.email), 
+    COALESCE(NEW.raw_user_meta_data->>'role', 'worker'),
+    (NEW.raw_user_meta_data->>'organization_id')::UUID,
+    COALESCE(NEW.raw_user_meta_data->>'native_language', 'de')
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    full_name = EXCLUDED.full_name,
+    role = EXCLUDED.role,
+    organization_id = EXCLUDED.organization_id,
+    native_language = EXCLUDED.native_language;
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

@@ -3,3 +3,6 @@ node_modules/
 .env.local
 .env
 .DS_Store
+build_output.txt
+lint_output.txt
+supabase/.temp/

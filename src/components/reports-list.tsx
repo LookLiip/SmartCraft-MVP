@@ -13,7 +13,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
+import { useRouter } from 'next/navigation';
+
 export function ReportsList() {
+  const router = useRouter();
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
@@ -22,8 +25,7 @@ export function ReportsList() {
   );
 
   const handleViewDetails = (id: string) => {
-    setSelectedReportId(id);
-    setIsDetailOpen(true);
+    router.push(`/admin/reports/${id}`);
   };
 
   if (!reports) return <div className="p-8 text-center text-slate-500">Lade Berichte...</div>;

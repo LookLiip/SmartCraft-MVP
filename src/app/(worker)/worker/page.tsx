@@ -8,6 +8,7 @@ import { MaterialTracking } from '@/components/material-tracking';
 import { SignaturePad } from '@/components/signature-pad';
 import { VoiceInput } from '@/components/voice-input/voice-input';
 import { ReportsList } from '@/components/reports-list';
+import { OrgSettings } from '@/components/org-settings';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function WorkerPage() {
@@ -61,9 +62,7 @@ export default function WorkerPage() {
           </TabsContent>
 
           <TabsContent value="settings" className="mt-4">
-            <div className="bg-white p-8 rounded-lg border text-center">
-              <p className="text-slate-500">Einstellungen werden in Kürze verfügbar sein.</p>
-            </div>
+            <OrgSettings />
           </TabsContent>
         </Tabs>
       </div>

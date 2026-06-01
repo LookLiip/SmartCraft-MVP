@@ -17,7 +17,8 @@ async function setupBuckets() {
     { name: 'audio', public: false, maxSize: 10485760 },
     { name: 'photos-internal', public: false, maxSize: 10485760 },
     { name: 'photos-client-facing', public: false, maxSize: 10485760 },
-    { name: 'signatures', public: false, maxSize: 1048576 }
+    { name: 'signatures', public: false, maxSize: 1048576 },
+    { name: 'letterheads', public: true, maxSize: 5242880 }
   ];
 
   for (const b of buckets) {

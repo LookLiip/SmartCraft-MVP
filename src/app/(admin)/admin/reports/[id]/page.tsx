@@ -4,7 +4,12 @@ import { Button } from '@/components/ui/button';
 import { ChevronLeft, Calendar, MapPin, User } from 'lucide-react';
 import Link from 'next/link';
 
+import { useParams } from 'next/navigation';
+
 export default function ReportReviewPage() {
+  const params = useParams();
+  const id = params.id as string;
+
   return (
     <AdminShell>
       <div className="space-y-6">
@@ -17,29 +22,11 @@ export default function ReportReviewPage() {
               <ChevronLeft className="w-4 h-4 mr-1" />
               Zurück zur Übersicht
             </Link>
-            <h2 className="text-3xl font-bold text-slate-900">EFH Müller - Elektroinstallation</h2>
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-slate-500 pt-1">
-              <span className="flex items-center">
-                <Calendar className="w-4 h-4 mr-2" />
-                07. Mai 2024
-              </span>
-              <span className="flex items-center">
-                <MapPin className="w-4 h-4 mr-2" />
-                Dorfstraße 4, 80331 München
-              </span>
-              <span className="flex items-center">
-                <User className="w-4 h-4 mr-2" />
-                Erstellt von: John Doe
-              </span>
-            </div>
-          </div>
-          <div className="flex items-center space-x-3">
-            <Button variant="outline">Entwurf speichern</Button>
-            <Button className="bg-blue-600 hover:bg-blue-700 text-white">Review abschließen</Button>
+            <h2 className="text-3xl font-bold text-slate-900">Bericht Review</h2>
           </div>
         </div>
 
-        <ReportReview />
+        <ReportReview reportId={id} />
       </div>
     </AdminShell>
   );

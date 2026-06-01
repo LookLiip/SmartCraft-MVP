@@ -165,36 +165,70 @@ serve(async (req: Request) => {
       `[${index + 1}] ${entry.original_text}${entry.translated_text ? `\nÜbersetzung: ${entry.translated_text}` : ''}`
     ).join("\n\n");
 
-    // Industry-specific terminology for construction
-    const businessTerms: Record<string, string> = {
-      electrical: "elektrotechnische Fachbegriffe (NEC, VDE, DIN Normen), Kabel, Leitungen, FI-Schutzschalter, Verteiler, NYM-J, Schukosteckdosen",
-      plumbing: "SHK-Fachbegriffe, Rohrleitungen, Heizung, Sanitär, Ventile, Druckprüfung, PE-Rohr, Kupferrohr, Pressfitting",
-      carpentry: "Tischler- und Zimmerer-Fachbegriffe, Holzarten, KVH, BSH, OSB-Platten, Balken, Sparren, Pfetten",
-      construction: "allgemeine Bauwesen-Fachbegriffe, Mauerwerk, Beton, Putz, Estrich, Fliesen, Abdichtung",
-      general: "allgemeine Bauwesen-Fachbegriffe, Mauerwerk, Beton, Putz, Estrich, Fliesen, Abdichtung"
+    const businessTerms: Record<string, { terms: string; description: string; sections: string }> = {
+      electrical: {
+        terms: "NEC, VDE, DIN Normen, NYM-J Kabel, FI-Schutzschalter, RCD, Verteiler, Schukosteckdose, CEE-Stecker, Drehstrom, Potentialausgleich, Erdung, Blitzschutz",
+        description: "elektrischen Installationen und Elektrotechnik",
+        sections: "## Elektroinstallation\n\n### Durchgeführte Arbeiten\n\n---\n\n## Abschluss"
+      },
+      plumbing: {
+        terms: "SHK (Sanitär-Heizung-Klima), Pressfitting, PE-Rohr, Kupferrohr, Wärmepumpe, Fußbodenheizung, Heizkörper, Ventil, Druckprüfung, Trinkwasser, Abwasser, Solaranlage",
+        description: "Heizungs-, Sanitär- und Klimatechnik",
+        sections: "## HLS-Installation (Heizung, Lüftung, Sanitär)\n\n### Durchgeführte Arbeiten\n\n---\n\n## Abschluss"
+      },
+      carpentry: {
+        terms: "KVH (Konstruktionsvollholz), BSH (Brettschichtholz), OSB-Platte, Balken, Sparren, Pfette, Keilzinkung, Nut-und-Feder, Beplankung, Dampfbremse",
+        description: "Tischler- und Zimmererarbeiten",
+        sections: "## Holzbauarbeiten\n\n### Durchgeführte Arbeiten\n\n---\n\n## Abschluss"
+      },
+      construction: {
+        terms: "Beton, Mauerwerk, Putz, Estrich, Fliesen, Abdichtung, Schalung, Bewehrung, Fundament, Sohle, Wand, Decke",
+        description: "allgemeinen Bauarbeiten und Bauwesen",
+        sections: "## Bauarbeiten\n\n### Durchgeführte Arbeiten\n\n---\n\n## Abschluss"
+      },
+      general: {
+        terms: "Beton, Mauerwerk, Putz, Estrich, Fliesen, Abdichtung, Schalung, Bewehrung, Fundament, Sohle, Wand, Decke",
+        description: "allgemeinen Bauarbeiten und Bauwesen",
+        sections: "## Bauarbeiten\n\n### Durchgeführte Arbeiten\n\n---\n\n## Abschluss"
+      }
     };
-    const terms = businessTerms[business_type] || businessTerms.general;
+    const bt = businessTerms[business_type] || businessTerms.general;
 
-    const systemPrompt = `You are a professional German technical writer specializing in construction reports.
-Your task is to compile a complete, professional German work report from multiple entries recorded on a construction site.
+    const systemPrompt = `You are a professional German technical writer creating client-facing construction documentation.
+You specialize in ${bt.description} and your output is presented directly to customers as an official work report.
 
-IMPORTANT CONTEXT:
-- Original entries were transcribed from audio recordings on construction sites
-- Speakers may have heavy accents (Turkish, Polish, Romanian, Arabic backgrounds)
-- There may be background construction noise affecting audio quality
-- Focus on extracting meaningful technical content, not literal transcription artifacts
+INPUT CONTEXT:
+- Multiple entries from construction site audio recordings
+- Speakers may have heavy Turkish-German, Polish-German, Romanian-German, or Arabic-German accents
+- Background construction noise may affect audio quality
+- Content includes technical terms, measurements, and specifications
 
-REPORT COMPILATION RULES:
-- Combine all entries into a cohesive document
-- Use formal German appropriate for client-facing documentation
-- Apply industry-standard construction terminology (${terms})
-- Preserve all technical details, measurements (m, cm, mm, m², kg), and specifications exactly as provided
-- DO NOT invent or add any information not present in the entries
-- DO NOT correct or change technical terms - keep professional terminology as-is
-- Structure the report clearly with sections if multiple work types are mentioned
-- Use proper German punctuation and grammar
-- Clean up filler words or repetitions from accented speech but preserve meaning
-- Common accented patterns: "yapmak"→machen/ausführen, measurements said in accented German`;
+OUTPUT REQUIREMENTS - MANDATORY FORMAT:
+${bt.sections}
+
+TECHNICAL TERMINOLOGY TO USE:
+${bt.terms}
+
+QUALITY STANDARDS:
+• German sentence structure: Verb at position 2, objects before verb
+• Technical nouns capitalized: "Kabelverlegung", "Heizungsinstallation"
+• Measurements: German format with comma (12,5 m, 24 m², 150 kg)
+• Preserve ALL original technical data — do not simplify or omit
+• Paragraphs: 2-4 sentences each for readability
+• Use formal German appropriate for official documentation
+
+ACCENT HANDLING:
+• Turkish-German: "yapmak"→ausführen/machen, "var"→vorhanden, "yok"→nicht vorhanden
+• Polish-German: consonant clusters, altered plurals
+• Romanian-German: "se face"→wird gemacht
+• If a word is completely unclear, use context-based interpretation with (wahrscheinlich "...") notation
+• Never produce literal transcription artifacts — produce semantic meaning
+
+COMMON TRANSLATION PATTERNS:
+- "Ich habe gemacht" → "durchgeführt"
+- "Kabeln" → "Kabel" (correct plural)
+- "die Maßen" → "die Maße" (correct spelling)
+- "gemacht" in construction context → "hergestellt" / "eingebaut" / "montiert" depending on context`;
 
     const userPrompt = `Compile the following work report entries into a single professional German document.
 

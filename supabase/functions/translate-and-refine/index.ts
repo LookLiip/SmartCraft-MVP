@@ -202,79 +202,111 @@ serve(async (req: Request) => {
 });
 
 function buildSystemPrompt(business_type: string, refine_level: string): string {
-  const businessTerms: Record<string, { terms: string; description: string }> = {
+  const businessTerms: Record<string, { terms: string; description: string; examples: string }> = {
     electrical: {
-      terms: "elektrotechnische Fachbegriffe (NEC, VDE, DIN Normen), Starkstrom, Schwachstrom, NYM-J, FI-Schutzschalter",
-      description: "elektrischen Installationen"
+      terms: "NEC, VDE, DIN Normen, NYM-J Kabel, FI-Schutzschalter (Fehlerstrom-Schutzschalter), RCD (Residual Current Device), Verteiler, Schukosteckdose, CEE-Stecker, Drehstrom, Starkstrom, Schwachstrom, Potentialausgleich, Erdung, Blitzschutz",
+      description: "elektrischen Installationen, Elektrotechnik und Gebäudetechnik",
+      examples: "- \"Kabel verlegt\" → \"Kabelverlegung durchgeführt\"\n- \"Stecker angemacht\" → \"Steckdosen installiert\"\n- \"Sicherung reingemacht\" → \"Sicherungen eingesetzt\""
     },
     plumbing: {
-      terms: "SHK-Fachbegriffe (Heizung, Sanitär, Klima), Pressfitting, PE-Rohr, Kupferrohr, Wärmepumpe",
-      description: "Heizungs- und Sanitärinstallationen"
+      terms: "SHK (Sanitär-Heizung-Klima), Pressfitting, PE-Rohr (Polyethylen), Kupferrohr, Wärmepumpe, Fußbodenheizung, Heizkörper, Ventil, Druckprüfung, Wasseruhr, Abwasser, Trinkwasserinstallation, Kessel, Solaranlage",
+      description: "Heizungs-, Sanitär- und Klimatechnik",
+      examples: "- \"Rohr angerbracht\" → \"Rohrleitung verlegt\"\n- \"Heizung angeschlossen\" → \"Heizungsanschluss hergestellt\"\n- \"Kessel eingebaut\" → \"Wärmeerzeuger installiert\""
     },
     carpentry: {
-      terms: "Tischler- und Zimmerer-Fachbegriffe, KVH, BSH, OSB-Platte, Balken, Sparren",
-      description: "Tischler- und Zimmererarbeiten"
+      terms: "KVH (Konstruktionsvollholz), BSH (Brettschichtholz), OSB-Platte (Oriented Strand Board), Balken, Sparren, Pfette, Firstpfette, Keilzinkung, Nut-und-Feder-Verbindung, Beplankung, Dampfbremse, Dampfsperre",
+      description: "Tischler- und Zimmererarbeiten",
+      examples: "- \"Balken draufgemacht\" → \"Balkenlage montiert\"\n- \"Platte draufgeschraubt\" → \"Beplankung angebracht\"\n- \"Holz gestellt\" → \"Holzkonstruktion aufgestellt\""
     },
     general: {
-      terms: "allgemeine Bauwesen-Fachbegriffe, Beton, Mauerwerk, Putz, Estrich",
-      description: "allgemeinen Bauarbeiten"
+      terms: "Beton, Mauerwerk, Putz, Estrich, Fliesen, Abdichtung, Schalung, Bewehrung, Fundament, Sohle, Wand, Decke, Stütze, Riegel, Mauerwerk, Schicht, Lage, Arbeitsfläche",
+      description: "allgemeinen Bauarbeiten und Bauwesen",
+      examples: "- \"Beton reingeschüttet\" → \"Betonage durchgeführt\"\n- \"Mauer gebaut\" → \"Mauerwerk hergestellt\"\n- \"Putz draufgemacht\" → \"Putzarbeiten ausgeführt\""
     },
     construction: {
-      terms: "allgemeine Bauwesen-Fachbegriffe, Beton, Mauerwerk, Putz, Estrich",
-      description: "allgemeinen Bauarbeiten"
+      terms: "Beton, Mauerwerk, Putz, Estrich, Fliesen, Abdichtung, Schalung, Bewehrung, Fundament, Sohle, Wand, Decke, Stütze, Riegel, Mauerwerk, Schicht, Lage, Arbeitsfläche",
+      description: "allgemeinen Bauarbeiten und Bauwesen",
+      examples: "- \"Beton reingeschüttet\" → \"Betonage durchgeführt\"\n- \"Mauer gebaut\" → \"Mauerwerk hergestellt\"\n- \"Putz draufgemacht\" → \"Putzarbeiten ausgeführt\""
     }
   };
 
   const bt = businessTerms[business_type] || businessTerms.general;
 
-  const basePrompt = `You are a professional German technical writer specializing in ${bt.description}.
-You are working on a construction work report. Use ${bt.terms} terminology where appropriate.`;
+  const basePrompt = `You are a professional German technical writer creating client-facing construction documentation for ${bt.description}.
+Use this industry terminology: ${bt.terms}.
+
+OUTPUT FORMAT - MANDATORY:
+• Start with a clear heading: "Arbeitsbericht" or "Tätigkeitsbericht"
+• Use short, professional paragraphs (2-4 sentences each)
+• Include measurements and specifications in parentheses when provided: (z.B. "Länge: 12,5 m", "Fläche: 24 m²")
+• End with a formal closing line appropriate for the business type
+
+EXAMPLE OUTPUT STYLE:
+${bt.examples}
+
+IMPORTANT RULES:
+• Use formal "Sie" form or neutral professional tone — NEVER colloquial
+• German sentence structure: Verb at position 2, objects before verb when possible
+• Technical nouns are capitalized: "Kabelverlegung", "Heizungsinstallation", "Mauerwerk"
+• Measurements in German format: comma as decimal separator (12,5 m not 12.5 m)
+• Preserve ALL original technical information (dimensions, quantities, materials)
+• If a term is unclear, rewrite it using a standard German construction term based on context`;
 
   if (refine_level === "formalize") {
     return basePrompt + `
-Your task is to formalize the text while preserving its exact meaning.
-- Convert to formal "Sie" form if not already used
-- Use proper German grammatical structure
-- Apply professional salutations and closings where appropriate
-- Maintain all technical details, measurements (m, cm, mm, m², kg), and specifications exactly as provided
-- DO NOT invent or add any information not present in the original
-- DO NOT guess technical terms - if a word is unclear, keep it in its original form`;
+
+REFINE LEVEL: FORMALIZE (Final Polish)
+• Convert any informal phrasing to formal German
+• Ensure proper German salutation and formal closing
+• Verify all technical terms use standard German terminology
+• Add appropriate professional framing (date, project info reference)
+• Check that the text reads as a natural German document, not a translation`;
   } else if (refine_level === "refine") {
     return basePrompt + `
-Your task is to improve the clarity and professionalism of the text.
-- Fix any grammar or syntax issues while preserving meaning
-- Use proper German punctuation (., ,, :, ;)
-- Structure sentences for better readability
-- Preserve the exact meaning — do not add or omit information
-- Keep technical terms and measurements intact
-- If you encounter non-German words that appear to be technical terms (from Turkish, Polish, Romanian, Arabic), either:
-  * Keep them as-is if clearly recognizable technical terms
-  * Replace with appropriate German technical equivalents where context is clear`;
+
+REFINE LEVEL: CLARITY AND PROFESSIONALISM
+• Fix any grammar, syntax, or punctuation issues
+• Structure for readability — use paragraph breaks for separate topics
+• Ensure technical terms are expressed in proper German technical vocabulary
+• Remove any traces of accented speech patterns (filler words, broken syntax)
+• Verify all numbers and measurements are correctly interpreted
+• Apply proper German compound nouns where appropriate`;
   } else {
     return basePrompt + `
-Your task is to translate the text to professional German.
-- Use formal tone appropriate for client-facing documentation
-- Apply industry-standard construction terminology
-- Preserve the exact meaning — do not add or omit information
-- Structure the text clearly with proper punctuation
-- If working with accented or dialect-heavy speech, focus on capturing the semantic meaning
-- Common accented patterns: Turkish-German often uses "yapmak" (machen), "var" (geben/sein), Polish-German uses consonant clusters differently`;
+
+REFINE LEVEL: TRANSLATION FROM ACCENTED SPEECH
+• Speaker may have heavy Turkish-German, Polish-German, Romanian-German, or Arabic-German accent
+• Common accented patterns to recognize and correct:
+  - Turkish-German: "yapmak"→machen/ausführen, "var"→vorhanden/geben, "yok"→nicht vorhanden
+  - Polish-German: consonant clusters ( especially "sz", "cz" sounds), plural forms altered
+  - Romanian-German: similar vowel substitutions, "se face"→wird gemacht
+  - Arabic-German: transferred phrasings, emphasis patterns
+• If a word is completely unclear, preserve the most likely meaning based on construction context
+• DO NOT produce literal transcription artifacts — produce semantic meaning in proper German
+• For heavy accents, prefer clarity over literal word-for-word translation
+• Add clarifying context in parentheses if a technical term is ambiguous: (wahrscheinlich "Kabelkanal")`;
   }
 }
 
 function buildUserPrompt(text: string, source_language: string, refine_level: string): string {
   const action = refine_level === "formalize" ? "Formalize" : refine_level === "refine" ? "Refine" : "Translate";
   
-  const sourceLangHint = source_language && source_language !== "unknown" 
-    ? `Source language hint: ${source_language}\n` 
-    : '';
+  const langHint = source_language && source_language !== "unknown" 
+    ? `Source language context: ${source_language} (heavy accent possible)\n` 
+    : 'Source language: unknown (assume construction site accent)\n';
     
-  return `${action} the following work report text to professional German.
+  const levelHint = refine_level === "translate" 
+    ? "Focus on semantic meaning over literal words. The speaker may have a heavy non-native German accent.\n"
+    : refine_level === "refine"
+    ? "Ensure professional formatting and proper German compound nouns.\n"
+    : "Apply final polish for client-facing formality.\n";
 
-${sourceLangHint}The speaker may have a heavy accent or use non-standard German. Focus on extracting the meaning and converting it to proper German technical documentation.
+  return `${action} this work report text to professional German client documentation.
+
+${langHint}${levelHint}IMPORTANT: Output must be in formal German suitable for presenting to a customer. Do NOT return the original text — return ONLY the refined German version.
 
 Original text:
 "${text}"
 
-${action}ed text:`;
+${action}d German version:`;
 }

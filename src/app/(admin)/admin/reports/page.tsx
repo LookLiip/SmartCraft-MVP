@@ -1,7 +1,7 @@
 import { AdminShell } from '@/components/admin-shell';
-import { ReportsList } from '@/components/reports-list';
+import { AdminReportsList } from '@/components/admin-reports-list';
 import { Button } from '@/components/ui/button';
-import { Plus, Filter } from 'lucide-react';
+import { Plus } from 'lucide-react';
 
 export default function AdminReportsPage() {
   return (
@@ -13,10 +13,6 @@ export default function AdminReportsPage() {
             <p className="text-slate-500 text-sm">Verwalten und prüfen Sie alle eingegangenen Berichte.</p>
           </div>
           <div className="flex items-center space-x-3">
-            <Button variant="outline" size="sm">
-              <Filter className="w-4 h-4 mr-2" />
-              Filter
-            </Button>
             <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
               <Plus className="w-4 h-4 mr-2" />
               Neuer Bericht
@@ -24,7 +20,7 @@ export default function AdminReportsPage() {
           </div>
         </div>
 
-        <ReportsList />
+        <AdminReportsList />
       </div>
     </AdminShell>
   );

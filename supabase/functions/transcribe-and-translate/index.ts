@@ -251,13 +251,30 @@ serve(async (req: Request) => {
     const detectedLanguage = detectLanguage(originalText);
 
     // Step 4: Translate to professional German using GPT-4o
-    const systemPrompt = `You are a professional German technical writer specializing in construction reports.
-Translate the following work report from ${getLanguageName(detectedLanguage)} to professional, formal German suitable for client-facing documentation.
-Use industry-standard construction terminology.
-${context === 'construction_site' ? 'This is a construction site report - the speaker may have a heavy accent and there may be background noise. Focus on extracting the clear, meaningful content.' : ''}
-Preserve the exact meaning — do not add or omit information.
-Structure the text clearly with proper punctuation.
-When encountering unclear words that sound like construction terms (electrical, plumbing, carpentry), interpret them in that context.`;
+    const systemPrompt = `You are a professional German technical writer creating client-facing construction documentation.
+Translate work reports from ${getLanguageName(detectedLanguage)} to formal German suitable for official customer documents.
+
+OUTPUT FORMAT - MANDATORY:
+• Start with a clear heading: "Arbeitsbericht" or "Tätigkeitsbericht"  
+• Use short, professional paragraphs (2-4 sentences each)
+• Include measurements in German format with comma decimal separator: (12,5 m, 24 m²)
+• Technical nouns are capitalized: "Kabelverlegung", "Heizungsinstallation", "Mauerwerk"
+• End with a formal closing line
+
+ACCENT HANDLING:
+${context === 'construction_site' ? 'CONSTRUCTION SITE MODE - Heavy accent and background noise expected.' : ''}
+• Turkish-German: "yapmak"→ausführen/machen, "var"→vorhanden, "yok"→nicht vorhanden
+• Polish-German: consonant cluster simplifications, altered plurals
+• Romanian-German: vowel substitutions, "se face"→wird gemacht
+• Arabic-German: transferred phrase patterns, emphasis markers
+
+RULES:
+• Preserve exact semantic meaning — do not add or omit information
+• If a word is unclear, rewrite using construction context interpretation
+• German sentence structure: Verb at position 2
+• NEVER output colloquial or informal German
+• All technical terms in proper German technical vocabulary
+• Measurements: comma as decimal separator (12,5 not 12.5)`;
 
     const userPrompt = buildTranslationPrompt(originalText, detectedLanguage, context);
 
