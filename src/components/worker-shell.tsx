@@ -5,6 +5,8 @@ import { NavLink } from './nav-link';
 import { Home, FileText, Camera, PenTool, Settings, Wifi, WifiOff, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SyncManager } from '@/lib/sync-manager';
+import { UserNav } from './user-nav';
+import { createClient } from '@/lib/supabase/client';
 
 export function WorkerShell({ 
   children,
@@ -17,6 +19,9 @@ export function WorkerShell({
 }) {
   const [isOnline, setIsOnline] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [user, setUser] = useState<{ email: string | null, name: string | null } | null>(null);
+
+  const supabase = createClient();
 
   useEffect(() => {
     setIsOnline(navigator.onLine);
@@ -25,6 +30,16 @@ export function WorkerShell({
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
+
+    // Fetch user info
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        setUser({
+          email: user.email || null,
+          name: user.user_metadata?.full_name || null
+        });
+      }
+    });
 
     return () => {
       window.removeEventListener('online', handleOnline);
@@ -74,9 +89,7 @@ export function WorkerShell({
             )}
           </div>
           
-          <div className="w-8 h-8 rounded-full bg-blue-100 border border-blue-200 flex items-center justify-center">
-            <span className="text-xs font-bold text-blue-700">MM</span>
-          </div>
+          <UserNav email={user?.email} name={user?.name} />
         </div>
       </header>
 

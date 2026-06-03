@@ -14,9 +14,26 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { UserNav } from './user-nav';
+import { createClient } from '@/lib/supabase/client';
+import { logoutAction } from '@/lib/actions/auth';
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const [user, setUser] = React.useState<{ email: string | null, name: string | null } | null>(null);
+
+  const supabase = createClient();
+
+  React.useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        setUser({
+          email: user.email || null,
+          name: user.user_metadata?.full_name || null
+        });
+      }
+    });
+  }, []);
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
@@ -35,7 +52,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         </nav>
 
         <div className="p-4 border-t border-slate-800">
-          <button className="flex items-center space-x-3 text-slate-400 hover:text-white px-2 py-2 transition-colors w-full">
+          <button 
+            onClick={() => logoutAction()}
+            className="flex items-center space-x-3 text-slate-400 hover:text-white px-2 py-2 transition-colors w-full"
+          >
             <LogOut className="w-5 h-5" />
             <span>Abmelden</span>
           </button>
@@ -60,13 +80,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
             </Button>
             <div className="flex items-center space-x-3 border-l pl-4">
-              <div className="text-right hidden sm:block">
-                <p className="text-sm font-semibold text-slate-900">Markus Weber</p>
-                <p className="text-xs text-slate-500">Back-Office</p>
-              </div>
-              <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
-                MW
-              </div>
+              <UserNav email={user?.email} name={user?.name} />
             </div>
           </div>
         </header>
