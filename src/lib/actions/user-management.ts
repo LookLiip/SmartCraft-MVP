@@ -5,22 +5,25 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 
 /**
- * Server action to invite a new user to the organization.
+ * Server action to invite a new user or create a local account.
  */
 export async function inviteUserAction(data: {
-  email: string;
+  email?: string;
+  username?: string;
+  password?: string;
   role: 'worker' | 'admin' | 'owner';
   full_name: string;
   native_language: string;
 }) {
-  const { email, role, full_name, native_language } = data
+  const { email, username, password, role, full_name, native_language } = data
 
-  if (!email || !role || !full_name) {
-    return { error: 'Name, E-Mail und Rolle sind erforderlich.' }
+  if ((!email && !username) || !role || !full_name) {
+    return { error: 'Name, Rolle und E-Mail (oder Benutzername) sind erforderlich.' }
   }
 
   try {
     const supabase = createClient()
+    const adminSupabase = createAdminClient()
     
     // 1. Verify that the current user is an admin/owner
     const { data: { user: currentUser } } = await supabase.auth.getUser()
@@ -41,48 +44,76 @@ export async function inviteUserAction(data: {
       return { error: 'Benutzer gehört keiner Organisation an.' }
     }
 
-    // 2. Create the invitation in the database first
-    // This ensures our trigger 'handle_new_user' can link the user upon signup.
-    const { error: inviteError } = await supabase
-      .from('user_invitations')
-      .insert({
-        email,
-        role,
-        organization_id,
-        invited_by: currentUser.id,
-        native_language: native_language || 'de'
+    // CASE A: Create a local account (no real email)
+    if (!email && username) {
+      if (!password) return { error: 'Passwort ist für lokale Konten erforderlich.' }
+      
+      const dummyEmail = `${username.toLowerCase()}@smartcraft.local`
+      
+      const { data: authData, error: authError } = await adminSupabase.auth.admin.createUser({
+        email: dummyEmail,
+        password: password,
+        email_confirm: true,
+        user_metadata: {
+          full_name,
+          organization_id,
+          role,
+          native_language: native_language || 'de'
+        }
       })
 
-    if (inviteError) {
-      console.error('Error creating invitation record:', inviteError)
-      // Check if it's a unique constraint violation
-      if (inviteError.code === '23505') {
-        return { error: 'Dieser Benutzer wurde bereits eingeladen.' }
+      if (authError) {
+        console.error('Error creating local auth user:', authError)
+        return { error: `Benutzer konnte nicht erstellt werden: ${authError.message}` }
       }
-      return { error: 'Fehler beim Erstellen der Einladung in der Datenbank.' }
+
+      revalidatePath('/admin/users')
+      return { success: true }
     }
 
-    // 3. Use the Admin Client to trigger the Supabase Auth invitation
-    const adminSupabase = createAdminClient()
-    const { error: authError } = await adminSupabase.auth.admin.inviteUserByEmail(email, {
-      data: { 
-        full_name: full_name,
-        organization_id,
-        role,
-        native_language: native_language || 'de'
-      },
-      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`
-    })
+    // CASE B: Standard Invitation flow (email provided)
+    if (email) {
+      // 2. Create the invitation in the database first
+      const { error: inviteError } = await supabase
+        .from('user_invitations')
+        .insert({
+          email,
+          role,
+          organization_id,
+          invited_by: currentUser.id,
+          native_language: native_language || 'de'
+        })
 
-    if (authError) {
-      console.error('Error sending auth invitation:', authError)
-      // Rollback database invitation
-      await supabase.from('user_invitations').delete().eq('email', email).eq('organization_id', organization_id)
-      return { error: `Einladungs-E-Mail konnte nicht gesendet werden: ${authError.message}` }
+      if (inviteError) {
+        console.error('Error creating invitation record:', inviteError)
+        if (inviteError.code === '23505') {
+          return { error: 'Dieser Benutzer wurde bereits eingeladen.' }
+        }
+        return { error: 'Fehler beim Erstellen der Einladung.' }
+      }
+
+      // 3. Trigger Supabase Auth invitation
+      const { error: authError } = await adminSupabase.auth.admin.inviteUserByEmail(email, {
+        data: { 
+          full_name: full_name,
+          organization_id,
+          role,
+          native_language: native_language || 'de'
+        },
+        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`
+      })
+
+      if (authError) {
+        console.error('Error sending auth invitation:', authError)
+        await supabase.from('user_invitations').delete().eq('email', email).eq('organization_id', organization_id)
+        return { error: `Einladungs-E-Mail konnte nicht gesendet werden: ${authError.message}` }
+      }
+
+      revalidatePath('/admin/users')
+      return { success: true }
     }
 
-    revalidatePath('/admin/users')
-    return { success: true }
+    return { error: 'Ungültige Anfrage.' }
   } catch (error) {
     console.error('Unexpected error in inviteUserAction:', error)
     return { error: 'Ein unerwarteter Fehler ist aufgetreten.' }

@@ -373,14 +373,22 @@ function detectLanguage(text: string): string {
   const plWords = ["i", "w", "z", "na", "do", "nie", "się", "to", "jest", "być", "byłem", "my", "ty", "się", "tak", "nie", "ale"];
   const roWords = ["și", "de", "a", "în", "pe", "la", "un", "o", "nu", "eu", "tu", "noi", "voi", "ei", "ca", "cu", "sau"];
   const arWords = ["في", "من", "إلى", "على", "هذا", "ال", "أن", "كان", "ليس", "مع", "ما", "هل", "لا", "عن", "بعد"];
+  const bksWords = ["i", "u", "na", "da", "za", "je", "se", "što", "koji", "bi", "ili", "može", "sam", "smo", "rad", "gradnja"];
 
-  const scores: Record<string, number> = { de: 0, tr: 0, pl: 0, ro: 0, ar: 0 };
+  const scores: Record<string, number> = { de: 0, tr: 0, pl: 0, ro: 0, ar: 0, bs: 0, hr: 0, sr: 0 };
 
   for (const word of deWords) { if (lowerText.includes(word)) scores.de += 2; }
   for (const word of trWords) { if (lowerText.includes(word)) scores.tr += 2; }
   for (const word of plWords) { if (lowerText.includes(word)) scores.pl += 2; }
   for (const word of roWords) { if (lowerText.includes(word)) scores.ro += 2; }
   for (const word of arWords) { if (lowerText.includes(word)) scores.ar += 2; }
+  for (const word of bksWords) { 
+    if (lowerText.includes(word)) {
+      scores.bs += 1;
+      scores.hr += 1;
+      scores.sr += 1;
+    }
+  }
 
   const maxLang = Object.entries(scores).reduce((a, b) => a[1] > b[1] ? a : b);
   if (maxLang[1] === 0) return "unknown";
@@ -389,7 +397,15 @@ function detectLanguage(text: string): string {
 
 function getLanguageName(code: string): string {
   const names: Record<string, string> = {
-    de: "German", tr: "Turkish", pl: "Polish", ro: "Romanian", ar: "Arabic", unknown: "the detected language"
+    de: "German", 
+    tr: "Turkish", 
+    pl: "Polish", 
+    ro: "Romanian", 
+    ar: "Arabic", 
+    bs: "Bosnian",
+    hr: "Croatian",
+    sr: "Serbian",
+    unknown: "the detected language"
   };
   return names[code] || "the detected language";
 }

@@ -51,9 +51,12 @@ export function UserManagement() {
   // New User Form State
   const [newUser, setNewUser] = useState({
     email: '',
+    username: '',
+    password: '',
     full_name: '',
     role: 'worker' as const,
-    native_language: 'de'
+    native_language: 'de',
+    use_email: true
   });
 
   const supabase = createClient();
@@ -96,10 +99,18 @@ export function UserManagement() {
     e.preventDefault();
     if (!orgId) return;
 
+    // Auto-generate username if needed
+    let finalUsername = newUser.username;
+    if (!newUser.use_email && !finalUsername && newUser.full_name) {
+      finalUsername = newUser.full_name.toLowerCase().replace(/\s+/g, '.');
+    }
+
     setIsAddSubmitting(true);
     try {
       const result = await inviteUserAction({
-        email: newUser.email,
+        email: newUser.use_email ? newUser.email : undefined,
+        username: newUser.use_email ? undefined : finalUsername,
+        password: newUser.use_email ? undefined : newUser.password,
         full_name: newUser.full_name,
         role: newUser.role,
         native_language: newUser.native_language
@@ -113,9 +124,12 @@ export function UserManagement() {
       setIsAddUserOpen(false);
       setNewUser({
         email: '',
+        username: '',
+        password: '',
         full_name: '',
         role: 'worker',
-        native_language: 'de'
+        native_language: 'de',
+        use_email: true
       });
       fetchUsers();
     } catch (error) {
@@ -181,17 +195,55 @@ export function UserManagement() {
                   onChange={(e) => setNewUser({ ...newUser, full_name: e.target.value })}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">E-Mail Adresse</Label>
-                <Input 
-                  id="email" 
-                  type="email" 
-                  required 
-                  placeholder="max@beispiel.de"
-                  value={newUser.email}
-                  onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+
+              <div className="flex items-center gap-2 py-2">
+                <input 
+                  type="checkbox" 
+                  id="use_email"
+                  className="rounded border-slate-300"
+                  checked={newUser.use_email}
+                  onChange={(e) => setNewUser({ ...newUser, use_email: e.target.checked })}
                 />
+                <Label htmlFor="use_email" className="text-sm cursor-pointer">Mit E-Mail Adresse einladen</Label>
               </div>
+
+              {newUser.use_email ? (
+                <div className="space-y-2">
+                  <Label htmlFor="email">E-Mail Adresse</Label>
+                  <Input 
+                    id="email" 
+                    type="email" 
+                    required 
+                    placeholder="max@beispiel.de"
+                    value={newUser.email}
+                    onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                  />
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="username">Benutzername</Label>
+                    <Input 
+                      id="username" 
+                      placeholder="max.mustermann"
+                      value={newUser.username}
+                      onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Initial-Passwort</Label>
+                    <Input 
+                      id="password" 
+                      type="password"
+                      required 
+                      placeholder="********"
+                      value={newUser.password}
+                      onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                    />
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="role">Rolle</Label>
@@ -219,6 +271,9 @@ export function UserManagement() {
                     <option value="pl">Polnisch</option>
                     <option value="en">Englisch</option>
                     <option value="it">Italienisch</option>
+                    <option value="bs">Bosnisch</option>
+                    <option value="hr">Kroatisch</option>
+                    <option value="sr">Serbisch</option>
                   </select>
                 </div>
               </div>
@@ -226,7 +281,7 @@ export function UserManagement() {
                 <Button type="button" variant="outline" onClick={() => setIsAddUserOpen(false)}>Abbrechen</Button>
                 <Button type="submit" className="bg-blue-600" disabled={isSubmitting}>
                   {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                  Einladen
+                  {newUser.use_email ? 'Einladen' : 'Erstellen'}
                 </Button>
               </DialogFooter>
             </form>
