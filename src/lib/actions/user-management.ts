@@ -49,15 +49,23 @@ export async function inviteUserAction(data: {
       if (!password) return { error: 'Passwort ist für lokale Konten erforderlich.' }
       
       // Get organization slug for brand-agnostic dummy email
-      const { data: orgData } = await supabase
+      const { data: orgData, error: orgError } = await adminSupabase
         .from('organizations')
         .select('slug')
         .eq('id', organization_id)
         .single()
       
-      const tenantSlug = orgData?.slug || 'default'
-      const dummyEmail = `${username.toLowerCase()}@${tenantSlug}.internal`
+      if (orgError) {
+        console.error('Error fetching organization slug:', orgError)
+        // Fallback to ID if slug is not found
+      }
       
+      const tenantSlug = orgData?.slug || organization_id.substring(0, 8)
+      const sanitizedUsername = username.toLowerCase().trim().replace(/\s+/g, '.').replace(/[^a-z0-9.]/g, '')
+      const dummyEmail = `${sanitizedUsername}@${tenantSlug}.internal`
+      
+      console.log('Creating local user with dummy email:', dummyEmail)
+
       const { data: authData, error: authError } = await adminSupabase.auth.admin.createUser({
         email: dummyEmail,
         password: password,
@@ -66,15 +74,20 @@ export async function inviteUserAction(data: {
           full_name,
           organization_id,
           role,
-          native_language: native_language || 'de'
+          native_language: native_language || 'de',
+          is_local_account: true
         }
       })
 
       if (authError) {
         console.error('Error creating local auth user:', authError)
+        if (authError.message.includes('already registered')) {
+          return { error: 'Dieser Benutzername ist in dieser Organisation bereits vergeben.' }
+        }
         return { error: `Benutzer konnte nicht erstellt werden: ${authError.message}` }
       }
 
+      console.log('Successfully created local user:', authData.user.id)
       revalidatePath('/admin/users')
       return { success: true }
     }

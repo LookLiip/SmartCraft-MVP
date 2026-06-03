@@ -97,16 +97,51 @@ export function UserManagement() {
 
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!orgId) return;
+    if (!orgId) {
+      alert('Organisation konnte nicht geladen werden. Bitte laden Sie die Seite neu.');
+      return;
+    }
+
+    // Validation
+    if (!newUser.full_name.trim()) {
+      alert('Der vollständige Name ist erforderlich.');
+      return;
+    }
+
+    if (newUser.use_email) {
+      if (!newUser.email.trim()) {
+        alert('Die E-Mail-Adresse ist erforderlich.');
+        return;
+      }
+    } else {
+      if (!newUser.password || newUser.password.length < 6) {
+        alert('Das Passwort muss mindestens 6 Zeichen lang sein.');
+        return;
+      }
+    }
 
     // Auto-generate username if needed
-    let finalUsername = newUser.username;
+    let finalUsername = newUser.username.trim();
     if (!newUser.use_email && !finalUsername && newUser.full_name) {
-      finalUsername = newUser.full_name.toLowerCase().replace(/\s+/g, '.');
+      finalUsername = newUser.full_name.toLowerCase().trim().replace(/\s+/g, '.').replace(/[^a-z0-9.]/g, '');
+    }
+
+    if (!newUser.use_email && !finalUsername) {
+      alert('Ein Benutzername konnte nicht automatisch generiert werden. Bitte geben Sie einen an.');
+      return;
     }
 
     setIsAddSubmitting(true);
     try {
+      console.log('Sending user data:', {
+        email: newUser.use_email ? newUser.email : undefined,
+        username: newUser.use_email ? undefined : finalUsername,
+        password: newUser.use_email ? undefined : newUser.password,
+        full_name: newUser.full_name,
+        role: newUser.role,
+        native_language: newUser.native_language
+      });
+
       const result = await inviteUserAction({
         email: newUser.use_email ? newUser.email : undefined,
         username: newUser.use_email ? undefined : finalUsername,
@@ -121,6 +156,7 @@ export function UserManagement() {
         return;
       }
 
+      alert(newUser.use_email ? 'Einladung erfolgreich gesendet.' : 'Mitarbeiter-Konto erfolgreich erstellt.');
       setIsAddUserOpen(false);
       setNewUser({
         email: '',
@@ -132,8 +168,9 @@ export function UserManagement() {
         use_email: true
       });
       fetchUsers();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding user:', error);
+      alert('Fehler beim Hinzufügen des Benutzers: ' + (error.message || 'Unbekannter Fehler'));
     } finally {
       setIsAddSubmitting(false);
     }
