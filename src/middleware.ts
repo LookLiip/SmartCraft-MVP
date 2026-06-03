@@ -1,8 +1,34 @@
-import { type NextRequest } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { updateSession } from '@/lib/supabase/middleware'
 
 export async function middleware(request: NextRequest) {
-  return await updateSession(request)
+  const url = request.nextUrl
+  const hostname = request.headers.get('host') || ''
+  
+  // Extract subdomain (e.g., tenant1.smartcraft.app -> tenant1)
+  const parts = hostname.split('.')
+  let subdomain = ''
+  
+  // If we have more than 2 parts, the first one is likely the subdomain
+  // This works for tenant.smartcraft.app and localhost with port
+  if (parts.length > 2 && !parts[0].startsWith('localhost')) {
+    subdomain = parts[0]
+  }
+
+  // Skip subdomain logic for common reserved words
+  if (['www', 'app', 'api', 'admin'].includes(subdomain)) {
+    subdomain = ''
+  }
+
+  // Update session and get response
+  const response = await updateSession(request)
+
+  // Pass subdomain to downstream via header if detected
+  if (subdomain) {
+    response.headers.set('x-tenant-slug', subdomain)
+  }
+
+  return response
 }
 
 export const config = {

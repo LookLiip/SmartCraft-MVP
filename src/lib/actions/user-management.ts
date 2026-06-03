@@ -48,7 +48,15 @@ export async function inviteUserAction(data: {
     if (!email && username) {
       if (!password) return { error: 'Passwort ist für lokale Konten erforderlich.' }
       
-      const dummyEmail = `${username.toLowerCase()}@smartcraft.local`
+      // Get organization slug for brand-agnostic dummy email
+      const { data: orgData } = await supabase
+        .from('organizations')
+        .select('slug')
+        .eq('id', organization_id)
+        .single()
+      
+      const tenantSlug = orgData?.slug || 'default'
+      const dummyEmail = `${username.toLowerCase()}@${tenantSlug}.internal`
       
       const { data: authData, error: authError } = await adminSupabase.auth.admin.createUser({
         email: dummyEmail,
