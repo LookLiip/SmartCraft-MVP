@@ -20,16 +20,37 @@ import { logoutAction } from '@/lib/actions/auth';
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const [user, setUser] = React.useState<{ email: string | null, name: string | null } | null>(null);
+  const [user, setUser] = React.useState<{
+    email: string | null,
+    name: string | null,
+    role: 'worker' | 'admin' | 'owner' | null,
+    isSuperAdmin: boolean
+  } | null>(null);
 
   const supabase = createClient();
 
   React.useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (user) {
+        let role: 'worker' | 'admin' | 'owner' | null = null;
+        let isSuperAdmin = false;
+
+        const { data: profile } = await supabase
+          .from('users')
+          .select('role, is_super_admin')
+          .eq('id', user.id)
+          .single();
+
+        if (profile) {
+          role = profile.role;
+          isSuperAdmin = profile.is_super_admin ?? false;
+        }
+
         setUser({
           email: user.email || null,
-          name: user.user_metadata?.full_name || null
+          name: user.user_metadata?.full_name || null,
+          role,
+          isSuperAdmin
         });
       }
     });
@@ -80,7 +101,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
             </Button>
             <div className="flex items-center space-x-3 border-l pl-4">
-              <UserNav email={user?.email} name={user?.name} />
+              <UserNav email={user?.email} name={user?.name} role={user?.role} isSuperAdmin={user?.isSuperAdmin} />
             </div>
           </div>
         </header>

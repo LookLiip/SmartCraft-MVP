@@ -1,6 +1,7 @@
 "use client"
 
-import { LogOut, User } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { LayoutDashboard, LogOut, ShieldCheck } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,12 +16,18 @@ import { logoutAction } from "@/lib/actions/auth"
 interface UserNavProps {
   email?: string | null
   name?: string | null
+  role?: 'worker' | 'admin' | 'owner' | null
+  isSuperAdmin?: boolean
 }
 
-export function UserNav({ email, name }: UserNavProps) {
+export function UserNav({ email, name, role, isSuperAdmin }: UserNavProps) {
+  const router = useRouter()
   const initials = name
     ? name.split(" ").map((n) => n[0]).join("").toUpperCase().substring(0, 2)
     : email?.substring(0, 2).toUpperCase() || "U"
+
+  const showAdminPanel = role === 'admin' || role === 'owner'
+  const showSuperAdmin = isSuperAdmin === true
 
   return (
     <DropdownMenu>
@@ -41,6 +48,25 @@ export function UserNav({ email, name }: UserNavProps) {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        {showAdminPanel && (
+          <DropdownMenuItem
+            onClick={() => router.push('/admin')}
+            className="cursor-pointer"
+          >
+            <LayoutDashboard className="mr-2 h-4 w-4" />
+            <span>Admin Panel</span>
+          </DropdownMenuItem>
+        )}
+        {showSuperAdmin && (
+          <DropdownMenuItem
+            onClick={() => router.push('/super-admin')}
+            className="cursor-pointer"
+          >
+            <ShieldCheck className="mr-2 h-4 w-4" />
+            <span>Super Admin</span>
+          </DropdownMenuItem>
+        )}
+        {(showAdminPanel || showSuperAdmin) && <DropdownMenuSeparator />}
         <DropdownMenuItem onClick={() => logoutAction()} className="text-red-600 cursor-pointer">
           <LogOut className="mr-2 h-4 w-4" />
           <span>Abmelden</span>
