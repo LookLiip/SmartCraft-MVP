@@ -22,7 +22,7 @@ RETURNS BOOLEAN AS $$
     AND is_super_admin = true
     AND deleted_at IS NULL
   );
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE sql SECURITY DEFINER;
 
 -- 5. Update RLS Policies to respect Super Admin bypass and organization isolation
 
