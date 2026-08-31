@@ -12,7 +12,7 @@ export default async function SuperAdminLayout({
   
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
-    redirect('/worker')
+    redirect('/login')
   }
   
   const { data: userData } = await supabase
