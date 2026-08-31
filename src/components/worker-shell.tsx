@@ -19,7 +19,12 @@ export function WorkerShell({
 }) {
   const [isOnline, setIsOnline] = useState(true);
   const [syncing, setSyncing] = useState(false);
-  const [user, setUser] = useState<{ email: string | null, name: string | null } | null>(null);
+  const [user, setUser] = useState<{
+    email: string | null,
+    name: string | null,
+    role: 'worker' | 'admin' | 'owner' | null,
+    isSuperAdmin: boolean
+  } | null>(null);
 
   const supabase = createClient();
 
@@ -31,12 +36,28 @@ export function WorkerShell({
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    // Fetch user info
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    // Fetch user info + profile (role / is_super_admin)
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (user) {
+        let role: 'worker' | 'admin' | 'owner' | null = null;
+        let isSuperAdmin = false;
+
+        const { data: profile } = await supabase
+          .from('users')
+          .select('role, is_super_admin')
+          .eq('id', user.id)
+          .single();
+
+        if (profile) {
+          role = profile.role;
+          isSuperAdmin = profile.is_super_admin ?? false;
+        }
+
         setUser({
           email: user.email || null,
-          name: user.user_metadata?.full_name || null
+          name: user.user_metadata?.full_name || null,
+          role,
+          isSuperAdmin
         });
       }
     });
@@ -89,7 +110,7 @@ export function WorkerShell({
             )}
           </div>
           
-          <UserNav email={user?.email} name={user?.name} />
+          <UserNav email={user?.email} name={user?.name} role={user?.role} isSuperAdmin={user?.isSuperAdmin} />
         </div>
       </header>
 
