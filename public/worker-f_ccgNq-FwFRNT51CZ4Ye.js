@@ -1,0 +1,1 @@
+self.addEventListener("activate",e=>{e.waitUntil((async()=>{const e=await self.caches.keys();await Promise.all(e.map(e=>e.startsWith("workbox-")&&!e.startsWith("workbox-precache-")?self.caches.delete(e):Promise.resolve()))})())});
